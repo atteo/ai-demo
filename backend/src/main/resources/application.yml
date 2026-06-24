@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/aidemo}
+    username: ${DB_USER:aidemo}
+    password: ${DB_PASSWORD:aidemo}
+  flyway:
+    enabled: true
+
+server:
+  port: 8080

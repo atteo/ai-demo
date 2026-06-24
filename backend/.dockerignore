@@ -1,0 +1,5 @@
+src/
+target/*/
+target/original-*.jar
+target/surefire-reports/
+!target/*.jar

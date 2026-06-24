@@ -1,0 +1,75 @@
+services:
+  traefik:
+    image: traefik:v3
+    container_name: ai-demo-traefik
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+    ports:
+      - "80:80"
+      - "8081:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - local-stack
+
+  postgres:
+    image: postgres:17
+    container_name: ai-demo-postgres
+    environment:
+      POSTGRES_DB: aidemo
+      POSTGRES_USER: aidemo
+      POSTGRES_PASSWORD: aidemo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - local-stack
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aidemo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ai-demo-backend
+    container_name: ai-demo-backend
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/aidemo
+      DB_USER: aidemo
+      DB_PASSWORD: aidemo
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - local-stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=8080"
+
+  frontend:
+    image: ai-demo-frontend
+    container_name: ai-demo-frontend
+    networks:
+      - local-stack
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+
+networks:
+  local-stack:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.100.0.0/24
+
+volumes:
+  postgres_data:
